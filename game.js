@@ -13,7 +13,12 @@ var WORLD_SIZE = 12000;
 var WIDTH = 800;
 var HEIGHT = 600;
 
+var GRID_WIDTH = 800;
+var GRID_HEIGHT = 800;
+
 var viewport = Point(WORLD_SIZE/2-(WIDTH/2), WORLD_SIZE/2-(HEIGHT/2));
+var newViewport = Point(0,0);   // reduce GC stuff
+var viewportDelta = Point(0,0);
 
 var TurningSpeed = 1.7;
 
@@ -184,6 +189,7 @@ function Ship(x, y) {
 
 function init() {
 	console.log("Init()");
+	
 	shipImage.src = "ship.png";
 	
 	player = new Ship(WORLD_SIZE/2, WORLD_SIZE/2);
@@ -258,11 +264,17 @@ function tick() {
 		}
 	}
 	
-	viewport.x = Math.max(0, player.attr.x+(player.attr.w/2)-(WIDTH/2));
-	viewport.y = Math.max(0, player.attr.y+(player.attr.h/2)-(HEIGHT/2));
+	newViewport.x = Math.max(0, player.attr.x+(player.attr.w/2)-(WIDTH/2));
+	newViewport.y = Math.max(0, player.attr.y+(player.attr.h/2)-(HEIGHT/2));
 	
-	viewport.x = Math.min(WORLD_SIZE-WIDTH, viewport.x);
-	viewport.y = Math.min(WORLD_SIZE-HEIGHT, viewport.y); 
+	newViewport.x = Math.min(WORLD_SIZE-WIDTH, newViewport.x);
+	newViewport.y = Math.min(WORLD_SIZE-HEIGHT, newViewport.y); 
+	
+	viewportDelta.x = newViewport.x - viewport.x;
+	viewportDelta.y = newViewport.y - viewport.y;
+	
+	viewport.x = newViewport.x;
+	viewport.y = newViewport.y;
 	
 	draw();
 	
@@ -270,45 +282,84 @@ function tick() {
 
 var m_w, m_z;
 function seedStarRandom(x,y) {
-	m_w = x;
-	m_z = y;
+	m_w = Math.floor(x); if( m_w == 0 ) m_w = 1;
+	m_z = Math.floor(y); if( m_z == 0 ) m_z = 1;
 }
 
 function starRandom() {
 	m_z = 36969 * (m_z & 65535) + (m_z >> 16);
 	m_w = 18000 * (m_w & 65535) + (m_w >> 16);
-	return ((m_z << 16) + m_w) / MAX_INT;  /* 32-bit result */
+	return (((m_z << 16) + m_w) & 0x7fffffff) / MAX_INT;  /* 32-bit result */
+
+
 }
 
 function starRandomRange(x,y) {
 	return Math.floor(starRandom() * (y-x + 1) + x);
 }
 
+var starBlurLine = Point(0,0);
 
-function drawStarsForGrid(ctx, gridx, gridy) {
+function drawStarsForGrid(ctx, gridx, gridy, intensity, starLevel) {
+		
+	seedStarRandom(gridx * (starLevel*13), gridy * (starLevel*7));
 	
-	seedStarRandom(gridx, gridy);
+	var lineLen = Math.sqrt(viewportDelta.x * viewportDelta.x + viewportDelta.y * viewportDelta.y);
+	if( lineLen == 0.0) lineLen = 1;
 	
+	// Normalize
+	starBlurLine.x = viewportDelta.x / lineLen;
+	starBlurLine.y = viewportDelta.y / lineLen;
+	lineLen = Math.max(0, lineLen - 15);
+
 	var numStars = starRandomRange(45, 100);
+
 	for (var i = 0; i < numStars; i++) {
-		var position = Point(starRandomRange(gridx*1500, (gridx+1)*1500),
-			starRandomRange(gridy*1500, (gridy+1)*1500));
+		//var position = Point(starRandomRange(gridx*GRID_WIDTH, (gridx+1)*GRID_WIDTH),
+		//	starRandomRange(gridy*GRID_HEIGHT, (gridy+1)*GRID_HEIGHT));
+		
+		var position = Point(starRandom() * GRID_WIDTH, starRandom() * GRID_HEIGHT);
+				
 		var rotation = starRandomRange(0, 359);
-		var level = starRandomRange(220,255);
+		var level = Math.round(starRandomRange(220,255) * intensity);
 		var width = starRandomRange(1,3);
 		var height = starRandomRange(1,3);
-		ctx.save();
-			ctx.fillStyle = "rgb("+level+","+level+","+level+")";
-			ctx.translate(position.x, position.y);
-			ctx.rotate(rotation * Math.PI / 180);
-			ctx.fillRect(-width/2, -height/2, width, height);
-		ctx.restore();
+		
+		    //ctx.save();
+			    ctx.fillStyle = "rgb("+level+","+level+","+level+")";
+			    
+			    //ctx.translate(position.x, position.y);
+			    //ctx.rotate(rotation * Math.PI / 180);
+			    //ctx.fillRect(-width/2, -height/2, width, height);
+			    ctx.fillRect(position.x-width/2, position.y-height/2, width, height);
+		    //ctx.restore();
+		    
+		if( lineLen > 0 ){	
+		    ctx.save();
+                ctx.strokeStyle="rgb("+level+","+level+","+level+")";
+		        ctx.translate(position.x, position.y);
+			    ctx.beginPath();
+			    ctx.moveTo(0,0)
+			    ctx.lineTo( starBlurLine.x * lineLen, starBlurLine.y * lineLen );
+			    ctx.stroke();
+		    ctx.restore();
+		}
 	}
 }
-
-function drawStars(ctx) {
-	var grid = Point(Math.floor(viewport.x/1500)+1, Math.floor(viewport.y/1500)+1);
+var lastGrid = Point(0,0);
+function drawStars2(ctx, c, starLevel ){
+	//var grid = Point(Math.floor(viewport.x*c/GRID_WIDTH)+1, Math.floor(viewport.y*c/GRID_HEIGHT)+1);
+	  var grid = Point(Math.floor(viewport.x*c/GRID_WIDTH), Math.floor(viewport.y*c/GRID_HEIGHT));
+	/*
+	// debug stats about what grid you're in
 	
+	if( c == 1.0 && (grid.x != lastGrid.x || grid.y != lastGrid.y) )
+	    console.log(grid.x + " " + grid.y);
+	   
+	   if( c == 1.0 ) lastGrid = grid;
+	  */
+	   
+	/*
 	//real layers
 	for (var i = -1; i < 2; i++) {
 		for (var j = -1; j < 2; j++) {
@@ -316,19 +367,42 @@ function drawStars(ctx) {
 				drawStarsForGrid(ctx,grid.x+i, grid.y+j);
 			}		
 		}
-	}
+	}*/
 	
 	//parallax layers
 	ctx.save();
-		ctx.translate(viewport.x-(viewport.x*1.52), viewport.y-(viewport.y*1.52));
+		//ctx.translate(viewport.x-(viewport.x*c), viewport.y-(viewport.y*c));
+		ctx.translate(-viewport.x*c, -viewport.y*c);
+		var gx, gy;
 		for (var i = -1; i < 2; i++) {
 			for (var j = -1; j < 2; j++) {
-				if (grid.x +i > 0 && grid.y > 0) {
-					drawStarsForGrid(ctx,grid.x+i, grid.y+j);
-				}		
+
+			    gx = grid.x + i;
+			    gy = grid.y + j;
+			    
+			    if( (gx + 1) * GRID_WIDTH < viewport.x * c) continue;
+			    if( gx * GRID_WIDTH > viewport.x *c + WIDTH ) continue;
+
+			    if( (gy + 1) * GRID_HEIGHT < viewport.y * c) continue;
+			    if( gy * GRID_HEIGHT > viewport.y * c + HEIGHT ) continue;
+			    
+				//if (grid.x +i > 0 && grid.y > 0) {
+				    ctx.save();
+				    ctx.translate( gx * GRID_WIDTH, gy * GRID_HEIGHT );
+					drawStarsForGrid(ctx, gx, gy, c * .7, starLevel);
+					ctx.restore();
+				//}		
 			}
 		}
 	ctx.restore();
+
+}
+function drawStars(ctx) {
+ //drawStars2(ctx, 1, 5 );
+ var l = 0;
+    for( var c = 0.6, l=0; c < 1.2; c += 0.2, l++ ){
+        drawStars2(ctx, c, l++ )
+    }
 }
 
 function draw() {
@@ -338,8 +412,9 @@ function draw() {
 	
 	ctx.fillRect(0,0,screen.width,screen.height); 
 	ctx.save();
-		ctx.translate(-viewport.x, -viewport.y);
+		//ctx.translate(-viewport.x, -viewport.y);
 		drawStars(ctx);
+		ctx.translate(-viewport.x, -viewport.y);
 		for(var layer = 0; layer < maxLayer; layer++) {
 			for(var i=0; i < drawableList.length; i++) {
 				var elm = drawableList[i];
