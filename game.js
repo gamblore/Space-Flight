@@ -8,15 +8,13 @@ var KEY_SPACE = 32;
 
 var KEYS=new Array(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_SPACE);
 
-var WORLD_SIZE = 12000;
-
 var WIDTH = 800;
 var HEIGHT = 600;
 
 var GRID_WIDTH = 800;
 var GRID_HEIGHT = 800;
 
-var viewport = Point(WORLD_SIZE/2-(WIDTH/2), WORLD_SIZE/2-(HEIGHT/2));
+var viewport = Point(-(WIDTH/2), -(HEIGHT/2));
 var newViewport = Point(0,0);   // reduce GC stuff
 var viewportDelta = Point(0,0);
 
@@ -192,7 +190,7 @@ function init() {
 	
 	shipImage.src = "ship.png";
 	
-	player = new Ship(WORLD_SIZE/2, WORLD_SIZE/2);
+	player = new Ship(0, 0);
 	player.z = 2;
 
 	drawableList.push(player);
@@ -264,11 +262,9 @@ function tick() {
 		}
 	}
 	
-	newViewport.x = Math.max(0, player.attr.x+(player.attr.w/2)-(WIDTH/2));
-	newViewport.y = Math.max(0, player.attr.y+(player.attr.h/2)-(HEIGHT/2));
 	
-	newViewport.x = Math.min(WORLD_SIZE-WIDTH, newViewport.x);
-	newViewport.y = Math.min(WORLD_SIZE-HEIGHT, newViewport.y); 
+	newViewport.x = player.attr.x+(player.attr.w/2)-(WIDTH/2);
+	newViewport.y = player.attr.y+(player.attr.h/2)-(HEIGHT/2);
 	
 	viewportDelta.x = newViewport.x - viewport.x;
 	viewportDelta.y = newViewport.y - viewport.y;
