@@ -5,8 +5,12 @@ var KEY_RIGHT = 39;
 var KEY_UP = 38;
 var KEY_DOWN = 40;
 var KEY_SPACE = 32;
+var KEY_W = 87;
+var KEY_A = 65;
+var KEY_S = 83;
+var KEY_D = 68;
 
-var KEYS=new Array(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_SPACE);
+var KEYS=new Array(KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN, KEY_SPACE, KEY_W, KEY_A, KEY_S, KEY_D);
 
 var WIDTH = 800;
 var HEIGHT = 600;
@@ -218,6 +222,7 @@ function findMinIndex(array) {
 
 
 function onKeyDown(event) {
+    //console.log(event.keyCode);
 	if (inArray(event.keyCode, KEYS)) {
 		KeysDown[""+event.keyCode] = 1;
 		event.preventDefault();
@@ -236,19 +241,19 @@ function onKeyUp(event) {
 
 function tick() {
 
-	if (KeysDown[""+KEY_UP]) {
+	if (KeysDown[""+KEY_UP] || KeysDown[""+KEY_W]) {
 		player.impulse();
 	}
 	
-	if (KeysDown[""+KEY_DOWN]) {
+	if (KeysDown[""+KEY_DOWN]  || KeysDown[""+KEY_S]) {
 		player.velocity.x = 0;
 		player.velocity.y = 0;
 	}
 	
-	if (KeysDown[""+KEY_LEFT]) {
+	if (KeysDown[""+KEY_LEFT]  || KeysDown[""+KEY_A]) {
 		player.rotx = player.rotx - TurningSpeed < 0 ? player.rotx -TurningSpeed + 360 : player.rotx - TurningSpeed;
 	}
-	if (KeysDown[""+KEY_RIGHT]) {
+	if (KeysDown[""+KEY_RIGHT]  || KeysDown[""+KEY_D]) {
 		player.rotx = player.rotx + TurningSpeed < 360 ? player.rotx +TurningSpeed : player.rotx + TurningSpeed - 360;
 	}
 	if (KeysDown[""+KEY_SPACE]) {
@@ -296,9 +301,9 @@ function starRandomRange(x,y) {
 
 var starBlurLine = Point(0,0);
 
-function drawStarsForGrid(ctx, gridx, gridy, intensity, starLevel) {
+function drawStarsForGrid(ctx, gridx, gridy, fac, starLevel) {
 		
-	seedStarRandom(gridx * (starLevel*13), gridy * (starLevel*7));
+	seedStarRandom(gridx + (starLevel*13), gridy + (starLevel*7));
 	
 	var lineLen = Math.sqrt(viewportDelta.x * viewportDelta.x + viewportDelta.y * viewportDelta.y);
 	if( lineLen == 0.0) lineLen = 1;
@@ -306,10 +311,15 @@ function drawStarsForGrid(ctx, gridx, gridy, intensity, starLevel) {
 	// Normalize
 	starBlurLine.x = viewportDelta.x / lineLen;
 	starBlurLine.y = viewportDelta.y / lineLen;
-	lineLen = Math.max(0, lineLen - 15);
+	lineLen = Math.max(0, lineLen - 15) * fac;
 
-	var numStars = starRandomRange(45, 100);
-
+    var starAlpha = 1.0-Math.min(1.0, (Math.max(0, lineLen / 5)));
+    
+	//var numStars = starRandomRange(45, 100);
+	var numStars = starRandomRange(15, 30);
+    var drawLine = lineLen > 0;
+    
+    
 	for (var i = 0; i < numStars; i++) {
 		//var position = Point(starRandomRange(gridx*GRID_WIDTH, (gridx+1)*GRID_WIDTH),
 		//	starRandomRange(gridy*GRID_HEIGHT, (gridy+1)*GRID_HEIGHT));
@@ -317,10 +327,10 @@ function drawStarsForGrid(ctx, gridx, gridy, intensity, starLevel) {
 		var position = Point(starRandom() * GRID_WIDTH, starRandom() * GRID_HEIGHT);
 				
 		var rotation = starRandomRange(0, 359);
-		var level = Math.round(starRandomRange(220,255) * intensity);
+		var level = Math.round(starRandomRange(220,255) * fac * 0.7);
 		var width = starRandomRange(1,3);
 		var height = starRandomRange(1,3);
-		
+		    ctx.globalAlpha = starAlpha;
 		    //ctx.save();
 			    ctx.fillStyle = "rgb("+level+","+level+","+level+")";
 			    
@@ -330,8 +340,10 @@ function drawStarsForGrid(ctx, gridx, gridy, intensity, starLevel) {
 			    ctx.fillRect(position.x-width/2, position.y-height/2, width, height);
 		    //ctx.restore();
 		    
-		if( lineLen > 0 ){	
+		if( drawLine ){
+		    
 		    ctx.save();
+		        ctx.globalAlpha = 1.0;
                 ctx.strokeStyle="rgb("+level+","+level+","+level+")";
 		        ctx.translate(position.x, position.y);
 			    ctx.beginPath();
@@ -385,7 +397,7 @@ function drawStars2(ctx, c, starLevel ){
 				//if (grid.x +i > 0 && grid.y > 0) {
 				    ctx.save();
 				    ctx.translate( gx * GRID_WIDTH, gy * GRID_HEIGHT );
-					drawStarsForGrid(ctx, gx, gy, c * .7, starLevel);
+					drawStarsForGrid(ctx, gx, gy, c, starLevel);
 					ctx.restore();
 				//}		
 			}
@@ -395,9 +407,9 @@ function drawStars2(ctx, c, starLevel ){
 }
 function drawStars(ctx) {
  //drawStars2(ctx, 1, 5 );
- var l = 0;
-    for( var c = 0.6, l=0; c < 1.2; c += 0.2, l++ ){
-        drawStars2(ctx, c, l++ )
+ var l = 1;
+    for( var c = 0.2, l=0; c < 1.1; c += 0.1, l++ ){
+        drawStars2(ctx, c, l )
     }
 }
 
